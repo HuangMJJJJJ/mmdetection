@@ -32,13 +32,13 @@ class DINO(DeformableDETR):
         assert self.with_box_refine, 'with_box_refine must be True for DINO'
 
         if dn_cfg is not None:
-            assert 'num_classes' not in dn_cfg and \
-                   'num_queries' not in dn_cfg and \
+            # assert 'num_classes' not in dn_cfg and \
+            assert 'num_queries' not in dn_cfg and \
                    'hidden_dim' not in dn_cfg, \
-                'The three keyword args `num_classes`, `embed_dims`, and ' \
+                'The three keyword args `embed_dims`, and ' \
                 '`num_matching_queries` are set in `detector.__init__()`, ' \
                 'users should not set them in `dn_cfg` config.'
-            dn_cfg['num_classes'] = self.bbox_head.num_classes
+            dn_cfg['num_classes'] = dn_cfg.get('num_classes', self.bbox_head.num_classes)
             dn_cfg['embed_dims'] = self.embed_dims
             dn_cfg['num_matching_queries'] = self.num_queries
         self.dn_query_generator = CdnQueryGenerator(**dn_cfg)

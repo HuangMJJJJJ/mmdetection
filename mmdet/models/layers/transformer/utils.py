@@ -349,6 +349,7 @@ class PatchMerging(BaseModule):
                  dilation: Optional[Union[int, tuple]] = 1,
                  bias: Optional[bool] = False,
                  norm_cfg: OptConfigType = dict(type='LN'),
+                 sampler: Optional[bool] = True,
                  init_cfg: OptConfigType = None) -> None:
         super().__init__(init_cfg=init_cfg)
         self.in_channels = in_channels
@@ -378,7 +379,7 @@ class PatchMerging(BaseModule):
             kernel_size=kernel_size,
             dilation=dilation,
             padding=padding,
-            stride=stride)
+            stride=stride) if sampler else None
 
         sample_dim = kernel_size[0] * kernel_size[1] * in_channels
 
@@ -420,18 +421,27 @@ class PatchMerging(BaseModule):
         if self.adap_padding:
             x = self.adap_padding(x)
             H, W = x.shape[-2:]
+            
+        if self.sampler:
+            x = self.sampler(x)
+            # if kernel_size=2 and stride=2, x should has shape (B, 4*C, H/2*W/2)
 
-        x = self.sampler(x)
-        # if kernel_size=2 and stride=2, x should has shape (B, 4*C, H/2*W/2)
+            out_h = (H + 2 * self.sampler.padding[0] - self.sampler.dilation[0] *
+                    (self.sampler.kernel_size[0] - 1) -
+                    1) // self.sampler.stride[0] + 1
+            out_w = (W + 2 * self.sampler.padding[1] - self.sampler.dilation[1] *
+                    (self.sampler.kernel_size[1] - 1) -
+                    1) // self.sampler.stride[1] + 1
 
-        out_h = (H + 2 * self.sampler.padding[0] - self.sampler.dilation[0] *
-                 (self.sampler.kernel_size[0] - 1) -
-                 1) // self.sampler.stride[0] + 1
-        out_w = (W + 2 * self.sampler.padding[1] - self.sampler.dilation[1] *
-                 (self.sampler.kernel_size[1] - 1) -
-                 1) // self.sampler.stride[1] + 1
-
-        output_size = (out_h, out_w)
+            output_size = (out_h, out_w)
+        else:
+            x0 = x[:, :, 0::2, 0::2]  # B C H/2 W/2
+            x1 = x[:, :, 1::2, 0::2]  # B C H/2 W/2
+            x2 = x[:, :, 0::2, 1::2]  # B C H/2 W/2
+            x3 = x[:, :, 1::2, 1::2]  # B C H/2 W/2
+            x = torch.cat([x0, x1, x2, x3], 1)  # B 4*C H/2 W/2
+            output_size = x.shape[-2:]
+            x = x.view(B, 4 * C, -1)  # B 4*C H/2*W/2
         x = x.transpose(1, 2)  # B, H/2*W/2, 4*C
         x = self.norm(x) if self.norm else x
         x = self.reduction(x)

@@ -81,7 +81,8 @@ class CocoMetric(BaseMetric):
                  collect_device: str = 'cpu',
                  prefix: Optional[str] = None,
                  sort_categories: bool = False,
-                 use_mp_eval: bool = False) -> None:
+                 use_mp_eval: bool = False,
+                 cat_ids: Optional[List[int]] = None) -> None:
         super().__init__(collect_device=collect_device, prefix=prefix)
         # coco evaluation metrics
         self.metrics = metric if isinstance(metric, list) else [metric]
@@ -113,6 +114,7 @@ class CocoMetric(BaseMetric):
             'be saved to a temp directory which will be cleaned up at the end.'
 
         self.outfile_prefix = outfile_prefix
+        self.cat_ids = cat_ids
 
         self.backend_args = backend_args
         if file_client_args is not None:
@@ -143,7 +145,6 @@ class CocoMetric(BaseMetric):
             self._coco_api = None
 
         # handle dataset lazy init
-        self.cat_ids = None
         self.img_ids = None
 
     def fast_eval_recall(self,

@@ -546,6 +546,7 @@ class SwinTransformer(BaseModule):
                  pretrained=None,
                  convert_weights=False,
                  frozen_stages=-1,
+                 sampler=True,
                  init_cfg=None):
         self.convert_weights = convert_weights
         self.frozen_stages = frozen_stages
@@ -610,6 +611,7 @@ class SwinTransformer(BaseModule):
                     out_channels=2 * in_channels,
                     stride=strides[i + 1],
                     norm_cfg=norm_cfg if patch_norm else None,
+                    sampler=sampler,
                     init_cfg=None)
             else:
                 downsample = None

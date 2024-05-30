@@ -28,8 +28,8 @@ class DINOHead(DeformableDETRHead):
     """
 
     def loss(self, hidden_states: Tensor, references: List[Tensor],
-             enc_outputs_class: Tensor, enc_outputs_coord: Tensor,
-             batch_data_samples: SampleList, dn_meta: Dict[str, int]) -> dict:
+             enc_outputs_class: Tensor=None, enc_outputs_coord: Tensor=None,
+             batch_data_samples: SampleList=None, dn_meta: Dict[str, int]=None) -> dict:
         """Perform forward propagation and loss calculation of the detection
         head on the queries of the upstream network.
 
@@ -62,6 +62,7 @@ class DINOHead(DeformableDETRHead):
         Returns:
             dict: A dictionary of loss components.
         """
+        assert batch_data_samples is not None, 'batch_data_samples should not be None'
         batch_gt_instances = []
         batch_img_metas = []
         for data_sample in batch_data_samples:
@@ -78,11 +79,11 @@ class DINOHead(DeformableDETRHead):
         self,
         all_layers_cls_scores: Tensor,
         all_layers_bbox_preds: Tensor,
-        enc_cls_scores: Tensor,
-        enc_bbox_preds: Tensor,
-        batch_gt_instances: InstanceList,
-        batch_img_metas: List[dict],
-        dn_meta: Dict[str, int],
+        enc_cls_scores: Tensor=None,
+        enc_bbox_preds: Tensor=None,
+        batch_gt_instances: InstanceList=[],
+        batch_img_metas: List[dict]=[],
+        dn_meta: Dict[str, int]=None,
         batch_gt_instances_ignore: OptInstanceList = None
     ) -> Dict[str, Tensor]:
         """Loss function.
@@ -124,10 +125,14 @@ class DINOHead(DeformableDETRHead):
          all_layers_denoising_cls_scores, all_layers_denoising_bbox_preds) = \
             self.split_outputs(
                 all_layers_cls_scores, all_layers_bbox_preds, dn_meta)
-
-        loss_dict = super(DeformableDETRHead, self).loss_by_feat(
-            all_layers_matching_cls_scores, all_layers_matching_bbox_preds,
-            batch_gt_instances, batch_img_metas, batch_gt_instances_ignore)
+        if self.training:
+            loss_dict = super(DeformableDETRHead, self).loss_by_feat(
+                all_layers_matching_cls_scores, all_layers_matching_bbox_preds,
+                batch_gt_instances, batch_img_metas, batch_gt_instances_ignore)
+        else:
+            loss_dict = super(DeformableDETRHead, self).loss_by_feat(
+                all_layers_matching_cls_scores[-1:], all_layers_matching_bbox_preds[-1:],
+                batch_gt_instances, batch_img_metas, batch_gt_instances_ignore)
         # NOTE DETRHead.loss_by_feat but not DeformableDETRHead.loss_by_feat
         # is called, because the encoder loss calculations are different
         # between DINO and DeformableDETR.
@@ -459,8 +464,8 @@ class DINOHead(DeformableDETRHead):
               normalized coordinate format (cx, cy, w, h) and has shape
               (num_decoder_layers, bs, num_denoising_queries, 4).
         """
-        num_denoising_queries = dn_meta['num_denoising_queries']
         if dn_meta is not None:
+            num_denoising_queries = dn_meta['num_denoising_queries']
             all_layers_denoising_cls_scores = \
                 all_layers_cls_scores[:, :, : num_denoising_queries, :]
             all_layers_denoising_bbox_preds = \

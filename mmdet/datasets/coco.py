@@ -55,6 +55,9 @@ class CocoDataset(BaseDetDataset):
     COCOAPI = COCO
     # ann_id is unique in coco dataset.
     ANN_ID_UNIQUE = True
+    def __init__(self, *args, **kwargs):
+        self.cat_ids = kwargs.pop("cat_ids", None)
+        super().__init__(*args, **kwargs)
 
     def load_data_list(self) -> List[dict]:
         """Load annotations from an annotation file named as ``self.ann_file``
@@ -67,15 +70,16 @@ class CocoDataset(BaseDetDataset):
             self.coco = self.COCOAPI(local_path)
         # The order of returned `cat_ids` will not
         # change with the order of the `classes`
-        self.cat_ids = self.coco.get_cat_ids(
-            cat_names=self.metainfo['classes'])
+        if self.cat_ids is None:
+            self.cat_ids = self.coco.get_cat_ids(
+                cat_names=self.metainfo['classes'])
         self.cat2label = {cat_id: i for i, cat_id in enumerate(self.cat_ids)}
         self.cat_img_map = copy.deepcopy(self.coco.cat_img_map)
 
         img_ids = self.coco.get_img_ids()
         data_list = []
         total_ann_ids = []
-        for img_id in img_ids:
+        for img_id in sorted(img_ids):
             raw_img_info = self.coco.load_imgs([img_id])[0]
             raw_img_info['img_id'] = img_id
 
