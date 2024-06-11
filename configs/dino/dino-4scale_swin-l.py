@@ -1,4 +1,4 @@
-_base_ = './dino-4scale_r50_8xb2-12e_coco.py'
+_base_ = "./dino-4scale_r50_8xb2-12e_coco.py"
 
 pretrained = 'https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_large_patch4_window12_384_22k.pth'  # noqa
 num_levels = 4
@@ -41,14 +41,17 @@ train_pipeline = [
     dict(type="PackDetInputs"),
 ]
 train_dataloader = dict(
-    batch_size=1,
-    num_workers=0,
-    persistent_workers=False,
-    sampler=dict(shuffle=False),
-    dataset=dict(cat_ids=cat_ids,pipeline=train_pipeline)
+    dataset=dict(
+        cat_ids=cat_ids,
+        # pipeline=train_pipeline,
+    )
 )
-val_dataloader = dict(dataset=dict(cat_ids=cat_ids,pipeline=train_pipeline))
+val_dataloader = dict(dataset=dict(cat_ids=cat_ids, pipeline=train_pipeline))
 test_dataloader = val_dataloader
 
 val_evaluator = dict(cat_ids=cat_ids)
 test_evaluator = val_evaluator
+# optimizer
+optim_wrapper = dict(
+    optimizer=dict(lr=0.00005)
+)  # custom_keys contains sampling_offsets and reference_points in DeformDETR  # noqa
