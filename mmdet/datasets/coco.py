@@ -79,7 +79,7 @@ class CocoDataset(BaseDetDataset):
         img_ids = self.coco.get_img_ids()
         data_list = []
         total_ann_ids = []
-        for img_id in sorted(img_ids):
+        for img_id in img_ids:
             raw_img_info = self.coco.load_imgs([img_id])[0]
             raw_img_info['img_id'] = img_id
 
