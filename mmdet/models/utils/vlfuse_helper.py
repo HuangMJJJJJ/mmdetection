@@ -184,31 +184,22 @@ class BiMultiHeadAttention(nn.Module):
             # Do not increase 50000, data type half has quite limited range
             attn_weights_l = torch.clamp(attn_weights_l, max=MAX_CLAMP_VALUE)
 
+        # mask vison for language
         if attention_mask_v is not None:
             attention_mask_v = (
-                attention_mask_v[:, None,
-                                 None, :].repeat(1, self.num_heads, 1,
-                                                 1).flatten(0, 1))
-            attn_weights_l.masked_fill_(attention_mask_v, float('-inf'))
+                attention_mask_v[:, None, None, :].repeat(1, self.num_heads, 1, 1).flatten(0, 1)
+            )
+            attn_weights_l.masked_fill_(attention_mask_v, float("-inf"))
 
         attn_weights_l = attn_weights_l.softmax(dim=-1)
 
+        # mask language for vision
         if attention_mask_l is not None:
-            assert (attention_mask_l.dim() == 2)
-            attention_mask = attention_mask_l.unsqueeze(1).unsqueeze(1)
-            attention_mask = attention_mask.expand(bsz, 1, tgt_len, src_len)
-            attention_mask = attention_mask.masked_fill(
-                attention_mask == 0, -9e15)
-
-            if attention_mask.size() != (bsz, 1, tgt_len, src_len):
-                raise ValueError('Attention mask should be of '
-                                 f'size {(bsz, 1, tgt_len, src_len)}')
-            attn_weights = attn_weights.view(bsz, self.num_heads, tgt_len,
-                                             src_len) + attention_mask
-            attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len,
-                                             src_len)
-
-        attn_weights_v = nn.functional.softmax(attn_weights, dim=-1)
+            attention_mask_l = (
+                attention_mask_l[:, None, None, :].repeat(1, self.num_heads, 1, 1).flatten(0, 1)
+            )
+            attn_weights.masked_fill_(attention_mask_l, float("-inf"))
+        attn_weights_v = attn_weights.softmax(dim=-1)
 
         attn_probs_v = F.dropout(
             attn_weights_v, p=self.dropout, training=self.training)

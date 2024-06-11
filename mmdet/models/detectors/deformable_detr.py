@@ -148,14 +148,17 @@ class DeformableDETR(DetectionTransformer):
         """
         batch_size = mlvl_feats[0].size(0)
 
-        # construct binary masks for the transformer.
-        assert batch_data_samples is not None
-        batch_input_shape = batch_data_samples[0].batch_input_shape
-        input_img_h, input_img_w = batch_input_shape
-        img_shape_list = [sample.img_shape for sample in batch_data_samples]
-        same_shape_flag = all([
-            s[0] == input_img_h and s[1] == input_img_w for s in img_shape_list
-        ])
+        if batch_size==1:
+            same_shape_flag = True
+        else:
+            # construct binary masks for the transformer.
+            assert batch_data_samples is not None
+            batch_input_shape = batch_data_samples[0].batch_input_shape
+            input_img_h, input_img_w = batch_input_shape
+            img_shape_list = [sample.img_shape for sample in batch_data_samples]
+            same_shape_flag = all([
+                s[0] == input_img_h and s[1] == input_img_w for s in img_shape_list
+            ])
         # support torch2onnx without feeding masks
         if torch.onnx.is_in_onnx_export() or same_shape_flag:
             mlvl_masks = []
